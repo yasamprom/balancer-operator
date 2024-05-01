@@ -1,0 +1,6 @@
+## Append samples of your project ##
+apiVersion: apps.yasamprom.com/v1
+kind: Balancer
+resources:
+- apps_v1_balancer.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

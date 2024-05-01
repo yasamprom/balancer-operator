@@ -1,0 +1,16 @@
+apiVersion: apps.yasamprom.com/v1
+kind: Balancer
+metadata:
+  labels:
+    app.kubernetes.io/name: balancer
+    app.kubernetes.io/instance: balancer-sample
+    app.kubernetes.io/part-of: balancer-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: balancer-operator
+  name: balancer-sample
+spec:
+  image: balancer:v1
+  replicas: 1
+  port: 8080
+
+  
