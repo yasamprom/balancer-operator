@@ -21,51 +21,71 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	appsv1 "github.com/yasamprom/balancer-operator/api/v1"
+	balancer "github.com/yasamprom/balancer-operator/api/v1"
 )
 
 var _ = Describe("Balancer Controller", func() {
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+		const resourceName = "balancer"
 
 		ctx := context.Background()
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
-		balancer := &appsv1.Balancer{}
+		b := &balancer.Balancer{
+			Spec: balancer.BalancerSpec{
+				Replicas: 1,
+			},
+		}
 
+		testLabels := make(map[string]string)
+		testLabels["custom-label"] = "value"
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Balancer")
-			err := k8sClient.Get(ctx, typeNamespacedName, balancer)
+			err := k8sClient.Get(ctx, typeNamespacedName, b)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &appsv1.Balancer{
+				d := appsv1.Deployment{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: appsv1.DeploymentSpec{
+						Replicas: &b.Spec.Replicas,
+						Selector: &metav1.LabelSelector{
+							MatchLabels: testLabels,
+						},
+						Template: corev1.PodTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels:    testLabels,
+								Namespace: "default",
+							},
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{{
+									Image: "balancer:v1",
+									Name:  "balancer-deployment",
+									Ports: []corev1.ContainerPort{{
+										ContainerPort: 8080,
+										Name:          "http",
+									}},
+								}},
+							},
+						},
+					},
 				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				Expect(k8sClient.Create(ctx, &d)).To(Succeed())
 			}
 		})
 
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &appsv1.Balancer{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance Balancer")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &BalancerReconciler{
@@ -77,8 +97,6 @@ var _ = Describe("Balancer Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
 		})
 	})
 })

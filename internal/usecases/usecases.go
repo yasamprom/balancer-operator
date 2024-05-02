@@ -7,7 +7,7 @@ import (
 )
 
 type SlicerClient interface {
-	NotifyEvents(ctx context.Context, nodes model.UpdateNodes) error
+	NotifyState(ctx context.Context, nodes model.UpdateNodes) error
 }
 
 type usecases struct {

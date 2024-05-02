@@ -9,5 +9,5 @@ import (
 
 func (uc usecases) NotifyEvents(ctx context.Context, nodes model.UpdateNodes) error {
 	log.Println("Notify events...")
-	return uc.slicer.NotifyEvents(ctx, nodes)
+	return uc.slicer.NotifyState(ctx, nodes)
 }

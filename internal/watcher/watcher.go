@@ -1,10 +1,12 @@
 package usecases
 
 import (
-	"fmt"
+	"context"
+	"log"
 	"strings"
 
 	"github.com/yasamprom/balancer-operator/internal/model"
+	slicer "github.com/yasamprom/balancer-operator/internal/repo/clients/slicer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/watch"
 )
@@ -13,12 +15,14 @@ import (
 type Config struct {
 	Watcher  watch.Interface
 	Triggers model.Triggers
+	Slicer   *slicer.Client
 }
 
 // Watcher ...
 type Watcher struct {
 	w        watch.Interface
 	triggers model.Triggers
+	slicer   *slicer.Client
 }
 
 // New creates new watcher
@@ -26,10 +30,11 @@ func New(c Config) *Watcher {
 	return &Watcher{
 		w:        c.Watcher,
 		triggers: c.Triggers,
+		slicer:   c.Slicer,
 	}
 }
 
-func (w *Watcher) StartWatching() error {
+func (w *Watcher) StartWatching(ctx context.Context) error {
 	go func() error {
 		for {
 			select {
@@ -37,17 +42,32 @@ func (w *Watcher) StartWatching() error {
 				if !w.shouldProcess(event) {
 					continue
 				}
+				var events model.UpdateNodes
 				if event.Type == watch.Added {
 					pod := event.Object.(*corev1.Pod)
-					fmt.Printf("registered pod: %s, %s\n", pod.Name, pod.Status.PodIP)
+					log.Printf("registered pod: %s, %s\n", pod.Name, pod.Status.PodIP)
+					events.New.Hosts = append(events.New.Hosts, model.Address{
+						Host: pod.Status.PodIP,
+					})
 				}
 				if event.Type == watch.Deleted {
 					pod := event.Object.(*corev1.Pod)
-					fmt.Printf("deleted pod: %s, %s\n", pod.Name, pod.Status.PodIP)
+					log.Printf("deleted pod: %s, %s\n", pod.Name, pod.Status.PodIP)
+					events.Disconnected.Hosts = append(events.Disconnected.Hosts, model.Address{
+						Host: pod.Status.PodIP,
+					})
 				}
 				if event.Type == watch.Error {
 					pod := event.Object.(*corev1.Pod)
-					fmt.Printf("error on pod: %s, %s\n", pod.Name, pod.Status.PodIP)
+					log.Printf("error on pod: %s, %s\n", pod.Name, pod.Status.PodIP)
+					// to be handled
+				}
+
+				if events.ContainsEvents() {
+					err := w.slicer.NotifyEvents(ctx, events)
+					if err != nil {
+						log.Println("watcher couldn't send events")
+					}
 				}
 
 			default:

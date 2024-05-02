@@ -185,8 +185,9 @@ func main() {
 	watcher := watcher.New(watcher.Config{
 		Watcher:  w,
 		Triggers: triggers,
+		Slicer:   c,
 	})
-	watcher.StartWatching()
+	watcher.StartWatching(context.Background())
 
 	setupLog.Info("Starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

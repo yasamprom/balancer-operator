@@ -16,3 +16,7 @@ type UpdateNodes struct {
 	New          ConnectedNodes
 	Disconnected DisconnectedNodes
 }
+
+func (un *UpdateNodes) ContainsEvents() bool {
+	return len(un.New.Hosts) != 0 || len(un.Disconnected.Hosts) != 0
+}
