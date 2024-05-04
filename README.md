@@ -1,16 +1,27 @@
-# balancer-operator
+# Balancer-operator
 This is an operator for deploying custom load balancer.
+Operator works with Slicer library and notifies it about connected/disconnected pods.
+Second responsability of operator is deploying balancer which also communicates with Slicer.
+
+## Before you start
+
+Make sure you have configured k8s cluster.
+1. For local development you can use [minikube](https://minikube.sigs.k8s.io/docs/)
+2. For building balancer and custom app you can use [docker-desktop](https://www.docker.com/products/docker-desktop/)
+
 
 ## Description
-Operator can handle events of your pods by knowing its name pattern or special label.
+Operator is k8s object, which can handle different events like pod connections or other.
+Handling events of your pods can work by knowing its name pattern or special label.
 Both ways are supported.
+
 If your pods have names `awesome-pod-...` you may set
 ```
-export WATCH_PODS=`awesome-pod` // common prefix
+export WATCH_PODS=awesome-pod // common prefix
 ```
 If you want to use only specific pods, use full names with `;` separetor
 ```
-export WATCH_PODS=`awesome-pod-f32yu2;awesome-pod-wr81jh`
+export WATCH_PODS=`awesome-pod-f32yu2;awesome-pod-wr81jh` // exact pods
 ```
 
 ## Run client app
@@ -32,8 +43,10 @@ Run image
 kubectl run simple-v1  --image=simple:v1 --image-pull-policy=IfNotPresent
 ```
 
+You don't have to run images, instead of this you can use any k8s objects.
 
-## Getting Started
+
+## Operator developing/testing 
 
 ### Prerequisites
 - go version v1.20.0+

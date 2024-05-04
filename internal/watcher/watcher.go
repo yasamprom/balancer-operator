@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/yasamprom/balancer-operator/internal/model"
 	slicer "github.com/yasamprom/balancer-operator/internal/repo/clients/slicer"
@@ -36,13 +37,15 @@ func New(c Config) *Watcher {
 
 func (w *Watcher) StartWatching(ctx context.Context) error {
 	go func() error {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		var events model.UpdateNodes
 		for {
 			select {
 			case event := <-w.w.ResultChan():
 				if !w.shouldProcess(event) {
 					continue
 				}
-				var events model.UpdateNodes
+
 				if event.Type == watch.Added {
 					pod := event.Object.(*corev1.Pod)
 					log.Printf("registered pod: %s, %s\n", pod.Name, pod.Status.PodIP)
@@ -63,13 +66,14 @@ func (w *Watcher) StartWatching(ctx context.Context) error {
 					// to be handled
 				}
 
+			case <-ticker.C:
 				if events.ContainsEvents() {
 					err := w.slicer.NotifyEvents(ctx, events)
 					if err != nil {
 						log.Println("watcher couldn't send events")
 					}
+					events = model.UpdateNodes{}
 				}
-
 			default:
 				continue
 			}

@@ -38,6 +38,7 @@ func (c *Client) NotifyEvents(ctx context.Context, nodes model.UpdateNodes) erro
 	}
 	reader := bytes.NewReader(bytesMsg)
 	_, err = http.Post(fmt.Sprintf("http://%s:%s/notify_nodes", c.host, c.port), connectType, reader)
+	log.Printf("request: %v", string(bytesMsg))
 	if err != nil {
 		log.Printf("http client error: %v", err)
 		return err

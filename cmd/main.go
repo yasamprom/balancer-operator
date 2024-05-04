@@ -51,8 +51,10 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme     = runtime.NewScheme()
+	setupLog   = ctrl.Log.WithName("setup")
+	slicerHost = "127.0.0.1"
+	slicerPort = "8080"
 )
 
 func init() {
@@ -98,8 +100,8 @@ func main() {
 
 	// creating clients
 	c := slicer.New(slicer.Config{
-		Host: "127.0.0.1",
-		Port: "83",
+		Host: slicerHost,
+		Port: slicerPort,
 	})
 
 	tlsOpts := []func(*tls.Config){}
