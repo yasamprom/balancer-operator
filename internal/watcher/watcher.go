@@ -21,9 +21,10 @@ type Config struct {
 
 // Watcher ...
 type Watcher struct {
-	w        watch.Interface
-	triggers model.Triggers
-	slicer   *slicer.Client
+	w           watch.Interface
+	triggers    model.Triggers
+	stuckEvents model.UpdateNodes
+	slicer      *slicer.Client
 }
 
 // New creates new watcher
@@ -35,12 +36,19 @@ func New(c Config) *Watcher {
 	}
 }
 
+// StartWatching runs manager for handling events on pods
 func (w *Watcher) StartWatching(ctx context.Context) error {
 	go func() error {
+
+		// configure ticker for sending events by chunks
 		ticker := time.NewTicker(500 * time.Millisecond)
 		var events model.UpdateNodes
+
 		for {
 			select {
+			case <-ctx.Done():
+				return nil
+
 			case event := <-w.w.ResultChan():
 				if !w.shouldProcess(event) {
 					continue
@@ -66,17 +74,38 @@ func (w *Watcher) StartWatching(ctx context.Context) error {
 					// to be handled
 				}
 
+			// send events chunk if it is not empty
 			case <-ticker.C:
 				if events.ContainsEvents() {
 					err := w.slicer.NotifyEvents(ctx, events)
 					if err != nil {
-						log.Println("watcher couldn't send events")
+						log.Printf("watcher couldn't send events: %v", err)
+						w.stuckEvents.New.Hosts = append(w.stuckEvents.New.Hosts, events.New.Hosts...)
+						w.stuckEvents.Disconnected.Hosts = append(w.stuckEvents.Disconnected.Hosts, events.Disconnected.Hosts...)
 					}
+					// clear events
 					events = model.UpdateNodes{}
 				}
-			default:
-				continue
 			}
+		}
+	}()
+
+	// send undelivered events
+	stuckTicker := time.NewTicker(1000 * time.Millisecond)
+	go func() {
+		select {
+		case <-stuckTicker.C:
+			if w.stuckEvents.ContainsEvents() {
+				err := w.slicer.NotifyEvents(ctx, w.stuckEvents)
+				if err == nil {
+					// clear events if sent successfully
+					w.stuckEvents = model.UpdateNodes{}
+				} else {
+					log.Printf("watcher couldn't send stuck events: %v", err)
+				}
+			}
+		case <-ctx.Done():
+			return
 		}
 	}()
 	return nil

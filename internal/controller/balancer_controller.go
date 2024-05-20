@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -56,7 +57,7 @@ func (r *BalancerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	_ = log.FromContext(ctx)
 	logger := log.Log.WithValues("balancer", req.NamespacedName)
 	logger.Info("Reconcile...")
-
+	fmt.Print(req)
 	var app balancer.Balancer
 
 	if err := r.Get(ctx, req.NamespacedName, &app); err != nil {
